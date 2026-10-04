@@ -169,7 +169,8 @@ extern unsigned char LastScreen; // last drawn screen (0xFF = force first clear)
 #define STATE_SAVING   1     // relay energised, heating blocked
 #define STATE_COOLING  2     // summer/cooling counterpart
 
-extern unsigned char State;   // optimiser writes this later; 0 = heating at boot
+extern unsigned char State;   // optimiser writes this later; 0 = heating at boot   
+extern unsigned char LastState;
 /**
  * @brief Initializes Port D pins for the switches with internal pull-ups.
  * Call this once during system startup.

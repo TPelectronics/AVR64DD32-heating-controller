@@ -1104,6 +1104,10 @@ char    DisplayMeny (void)
                         sprintf(lcd_line_buffer, " Set Timer off  ");
                    break;
                    
+                   case 8:
+                        sprintf(lcd_line_buffer, " Log view "); 
+                   break;
+                   
                    default:
                         sprintf(lcd_line_buffer, "   Setup time   ");
                    break;

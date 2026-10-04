@@ -213,7 +213,12 @@ while (1)
             {   old_year = current_year; // update
                 leap_year_cycle = is_leap_year (current_year);
             } 
-            
+            // save log
+            if (State != LastState)
+            {
+                HistPush();
+                LastState = State;
+            }
             // print clock on UART
             #asm("cli")
             if (s != seconds)
@@ -284,7 +289,8 @@ while (1)
                     
                     LcdIsOff = 1;
                 }
-            }
+            }  
+            
             // make meny choice
             if ( ActivKey == KEY_OK ) 
             {   while ( ActivKey)   // wait release
@@ -334,6 +340,10 @@ while (1)
                     case 7:
                         SetupTimeOff ();
 
+                    break;
+                    
+                    case 8:
+                        ViewLog();
                     break;
                                                    
                     default: // Set Clock  

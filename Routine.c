@@ -74,6 +74,7 @@ unsigned char Temp1_low;    // winter band min  (x10, e.g. 185 = 18.5C)
 unsigned char Temp1_high;   // winter band max
 unsigned char Temp2_low;    // summer band min
 unsigned char Temp2_high;   // summer band max
+unsigned char LastState = 0xFF;
 
 // EEPROM
     eeprom unsigned char NewEEprom;
