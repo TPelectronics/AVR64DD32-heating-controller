@@ -13,6 +13,18 @@ ok to exit
 
 // Global clock variables
 
+// ---- LOG HISTORY (RAM, push buffer, newest at index 0) ----
+
+unsigned int  HistOn[HIST_SIZE];
+unsigned int  HistOff[HIST_SIZE];
+unsigned int  HistSave[HIST_SIZE];
+unsigned int  HistDay[HIST_SIZE];
+unsigned char HistHour[HIST_SIZE];
+unsigned char HistMin[HIST_SIZE];
+unsigned char HistSvPct[HIST_SIZE];
+unsigned char HistCount = 0;        // how many valid records (0..50)
+unsigned int CycleOnMin;    // minutes heating this cycle
+unsigned int CycleOffMin;   // minutes off/blocked this cycle
 
 // Internal cursor position tracker (0..3)
 static unsigned char edit_index = 0; 
@@ -1438,4 +1450,134 @@ void MainDisplay(unsigned char scr)
             }
             break;
     }
+}
+void ViewLog(void)
+{
+    unsigned char rec;               // record being viewed
+    unsigned char editing  = 1;
+    unsigned char ok_cnt   = 0;
+    unsigned char key      = KEY_NONE;
+    unsigned char lcd_buffer[17];
+    unsigned int  on_v, off_v, day_v;
+    unsigned char hour_v, min_v, sv_v;
+
+    rec = 0;                         // start at newest
+
+    // ===== Screen prepare =====
+    lcd_cmd(0x01);
+    delay_ms(2);
+    LoadCustomLCDChars();
+    lcd_gotoxy(0, 1);
+    lcd_print(" ");
+    lcd_char(0);                     // Up Arrow
+    lcd_print(" ");
+    lcd_char(1);                     // Down Arrow
+    lcd_print(" ");
+    lcd_print("[OK]");
+
+    while (editing)
+    {
+        // ---- DRAW RECORD ----
+        if (rec < HistCount)         // valid record
+        {
+            on_v   = HistOn[rec];
+            off_v  = HistOff[rec];
+            day_v  = HistDay[rec] % 100;
+            hour_v = HistHour[rec];
+            min_v  = HistMin[rec];
+            sv_v   = HistSvPct[rec];
+
+            lcd_gotoxy(0, 0);
+            sprintf(lcd_buffer, "L%02u On %u Off %u",
+                    (unsigned int)rec, on_v, off_v);
+            lcd_print(lcd_buffer);
+
+            lcd_gotoxy(0, 1);
+            sprintf(lcd_buffer, "%02u:%02u d%02u Sv %u%%",
+                    (unsigned int)hour_v, (unsigned int)min_v,
+                    (unsigned int)day_v, (unsigned int)sv_v);
+            lcd_print(lcd_buffer);
+            // note: line 2 overwrites the arrow legend; acceptable:
+            // arrows were needed only to enter — or move legend draw
+            // inside the redraw and accept the trade. See note below.
+        }
+        else                          // no record yet
+        {
+            lcd_gotoxy(0, 0);
+            lcd_print("Log empty      ");
+            lcd_gotoxy(0, 1);
+            lcd_print("               ");
+        }
+
+        // ---- KEYS ----
+        key = ScanKeyBoard();
+        if (key == KEY_NONE) continue;
+
+        if (key == KEY_OK)             // hold to exit
+        {
+            ok_cnt = 0;
+            while (ScanKeyBoard() == KEY_OK)
+            {
+                delay_ms(10);
+                ok_cnt++;
+                if (ok_cnt >= OK_EXIT_COUNT)
+                {
+                    editing = 0;
+                    break;
+                }
+            }
+            continue;
+        }
+
+        if (key == KEY_UP)             // newer record
+        {
+            if (rec > 0) rec--;
+        }
+        else if (key == KEY_DOWN)     // older record
+        {
+            if ((rec + 1) < HistCount) rec++;
+        }
+
+        while (ScanKeyBoard() != KEY_NONE)
+        {
+            // use wdr if issue
+        }
+    }
+
+    lcd_cmd(0x01);
+    delay_ms(2);
+}
+void HistPush(void)
+{   unsigned int  total;      // <-- must be here, before first use
+    unsigned char i;
+
+    // shift down: oldest (index 49) falls out
+    for (i = HIST_SIZE - 1; i > 0; i--)
+    {
+        HistOn[i]    = HistOn[i - 1];
+        HistOff[i]   = HistOff[i - 1];
+        HistSave[i]  = HistSave[i - 1];
+        HistDay[i]   = HistDay[i - 1];
+        HistHour[i]  = HistHour[i - 1];
+        HistMin[i]   = HistMin[i - 1];
+        HistSvPct[i] = HistSvPct[i - 1];
+    } 
+    // store the just-finished cycle at index 0 (newest)
+    HistOn[0]    = CycleOnMin;    // unsigned int -> unsigned int, no cast needed
+    HistOff[0]   = CycleOffMin;   // full 0..65535 range preserved
+    HistSave[0]  = State;
+    HistDay[0]   = day_of_month;
+    HistHour[0]  = hours;
+    HistMin[0]   = minutes;
+
+    total = CycleOnMin + CycleOffMin;
+    if (total == 0) HistSvPct[0] = 0;
+    else HistSvPct[0] = (unsigned char)((CycleOffMin * 100UL) / total);
+
+    // cap the count at buffer size
+    if (HistCount < HIST_SIZE) HistCount++;
+
+    // reset cycle accumulators for the next cycle
+    CycleOnMin  = 0;
+    CycleOffMin = 0;
 }
